@@ -130,7 +130,7 @@ docker compose --env-file .env.local up --build
 │  │  - Email/Pass   │    │  │  profiles   │  │ transactions  │  ││
 │  │  - OAuth        │    │  │  - balance  │  │ - offline_id  │  ││
 │  └─────────────────┘    │  └─────────────┘  │ - signature   │  ││
-│                         │                   └───────────────┘ ││
+│                         │                   └───────────────┘  ││
 │                         │  ┌────────────────────────────────┐  ││
 │                         │  │    process_offline_batch()     │  ││
 │                         │  │    - Idempotency check         │  ││
