@@ -85,6 +85,40 @@ export default function Dashboard() {
         };
     }, [router]);
 
+    // Real-time subscription for incoming P2P payments
+    useEffect(() => {
+        if (!userId) return;
+
+        const channel = supabase
+            .channel('incoming-tx')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'transactions',
+                    filter: `recipient_id=eq.${userId}`
+                },
+                async (payload) => {
+                    console.log('🔔 Incoming P2P transaction received!', payload);
+                    // Trigger sync to fetch the new transaction and update balance
+                    // We call useShadowTransaction's syncNow via a small delay to ensure DB consistency
+                    // but we can't access the hook's syncNow directly here easily without prop drilling or context.
+                    // Instead, we will force a re-render/fetch using Dexie + SyncEngine directly.
+
+                    const { syncWalletFromServer } = require('@/lib/syncEngine');
+                    await syncWalletFromServer(userId);
+
+                    // Also trigger a UI refresh if possible (liveQuery handles Dexie updates automatically)
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [userId]);
+
     // Handle Sign Out
     const handleSignOut = async () => {
         await supabase.auth.signOut();
@@ -116,8 +150,9 @@ export default function Dashboard() {
     );
 
     // Handle payment submission
-    const handlePayment = async (amount: number, description: string) => {
-        const success = await addTransaction(amount, description, 'debit');
+    const handlePayment = async (amount: number, description: string, recipientsDummy?: any, recipientId?: string) => {
+        // Use 'debit' type. If recipientId is present, it becomes a P2P transfer
+        const success = await addTransaction(amount, description, 'debit', recipientId);
         if (success) {
             setShowPaymentForm(false);
         }

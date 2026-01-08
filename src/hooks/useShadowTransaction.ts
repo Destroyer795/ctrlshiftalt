@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db, addOfflineTransaction, getWalletState, updateWalletState, getPendingTransactions } from '@/lib/db';
 import { generateSignature, generateOfflineId } from '@/utils/crypto';
-import { syncOfflineTransactions } from '@/lib/syncEngine';
+import { syncOfflineTransactions, syncWalletFromServer } from '@/lib/syncEngine';
 import { supabase } from '@/lib/supabase';
 import type { OfflineTransaction, WalletState, TransactionType } from '@/lib/types';
 
@@ -49,11 +49,10 @@ export function useShadowTransaction(userId: string | null): UseShadowTransactio
         try {
             let state = await getWalletState(userId);
 
-            // Initialize if doesn't exist - fetch from Supabase profile
-            if (!state) {
-                // Fetch user's actual balance from Supabase
-                let initialBalance = 10000; // Fallback default
-
+            // ALWAYS try to fetch latest balance from Supabase when online
+            // This ensures recipients see incoming P2P transfers
+            let serverBalance: number | null = null;
+            if (navigator.onLine) {
                 try {
                     const { data: profile, error } = await supabase
                         .from('profiles')
@@ -62,16 +61,30 @@ export function useShadowTransaction(userId: string | null): UseShadowTransactio
                         .single();
 
                     if (!error && profile) {
-                        initialBalance = parseFloat(profile.balance) || 10000;
+                        serverBalance = parseFloat(profile.balance) || null;
+                        console.log('📥 Fetched server balance:', serverBalance);
                     }
                 } catch (err) {
-                    console.warn('Could not fetch profile balance, using default:', err);
+                    console.warn('Could not fetch profile balance:', err);
                 }
+            }
 
+            // Initialize if doesn't exist OR update with server balance
+            if (!state) {
+                // First time - create new wallet state
+                const initialBalance = serverBalance ?? 10000; // Fallback default
                 state = {
                     id: userId,
                     cached_balance: initialBalance,
                     shadow_balance: initialBalance,
+                    last_updated: Date.now()
+                };
+                await updateWalletState(state);
+            } else if (serverBalance !== null) {
+                // Existing wallet - update cached_balance from server
+                state = {
+                    ...state,
+                    cached_balance: serverBalance,
                     last_updated: Date.now()
                 };
                 await updateWalletState(state);
@@ -97,6 +110,11 @@ export function useShadowTransaction(userId: string | null): UseShadowTransactio
                 shadow_balance: calculatedShadow
             });
             setPendingCount(pending.length);
+
+            // Download latest transactions from server (including incoming P2P transfers)
+            if (navigator.onLine) {
+                syncWalletFromServer(userId).catch(console.error);
+            }
         } catch (err) {
             console.error('Error loading wallet state:', err);
         } finally {

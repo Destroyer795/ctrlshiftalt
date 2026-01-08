@@ -193,4 +193,3 @@ Server-side check prevents overdraft even if client is compromised.
 MIT License - Build2Break Hackathon 2026
 
 ---
-
