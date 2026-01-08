@@ -163,7 +163,7 @@ export function QRCodeScanner({ onScan, onClose, maxAmount }: QRCodeScannerProps
         }
 
         if (maxAmount !== undefined && paymentAmount > maxAmount) {
-            setError(`Insufficient balance. Max: ${maxAmount.toLocaleString()} сом`);
+            setError(`Insufficient balance. Max: ${maxAmount.toLocaleString()} Rs`);
             return;
         }
 
@@ -264,7 +264,7 @@ export function QRCodeScanner({ onScan, onClose, maxAmount }: QRCodeScannerProps
                             />
                             {maxAmount !== undefined && (
                                 <p className="text-slate-500 text-xs mt-1">
-                                    Balance: {maxAmount.toLocaleString()} сом
+                                    Balance: {maxAmount.toLocaleString()} Rs
                                 </p>
                             )}
                         </div>
@@ -275,7 +275,7 @@ export function QRCodeScanner({ onScan, onClose, maxAmount }: QRCodeScannerProps
                         <div className="p-4 bg-slate-800/50 rounded-xl">
                             <p className="text-slate-400 text-sm">Amount</p>
                             <p className="text-2xl font-bold text-white">
-                                {scannedData.amount.toLocaleString()} сом
+                                {scannedData.amount.toLocaleString()} Rs
                             </p>
                         </div>
                     )}

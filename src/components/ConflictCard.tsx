@@ -83,7 +83,7 @@ export function ConflictCard({ transaction, onResolve, onDismiss }: ConflictCard
                         <span className="font-semibold">{transaction.description}</span>
                         <span className="text-slate-500 mx-2">•</span>
                         <span className={transaction.type === 'debit' ? 'text-red-400' : 'text-emerald-400'}>
-                            {transaction.type === 'debit' ? '-' : '+'}{transaction.amount.toLocaleString()} сом
+                            {transaction.type === 'debit' ? '-' : '+'}{transaction.amount.toLocaleString()} Rs
                         </span>
                     </p>
                 </div>
@@ -115,7 +115,7 @@ export function ConflictCard({ transaction, onResolve, onDismiss }: ConflictCard
                                         <div>
                                             <span className="text-slate-500">Amount:</span>
                                             <span className="text-white font-mono ml-2">
-                                                {localVersion.amount.toLocaleString()} сом
+                                                {localVersion.amount.toLocaleString()} Rs
                                             </span>
                                         </div>
                                         <div>
@@ -142,7 +142,7 @@ export function ConflictCard({ transaction, onResolve, onDismiss }: ConflictCard
                                         <div>
                                             <span className="text-slate-500">Amount:</span>
                                             <span className="text-white font-mono ml-2">
-                                                {(serverVersion.amount || localVersion.amount).toLocaleString()} сом
+                                                {(serverVersion.amount || localVersion.amount).toLocaleString()} Rs
                                             </span>
                                         </div>
                                         <div>

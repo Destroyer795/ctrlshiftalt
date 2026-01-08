@@ -146,7 +146,7 @@ export function VoiceInputButton({ onTransaction, disabled }: VoiceInputButtonPr
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-slate-400">Amount</span>
-                                        <span className="text-white font-bold">{lastCommand.amount.toLocaleString()} сом</span>
+                                        <span className="text-white font-bold">{lastCommand.amount.toLocaleString()} Rs</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-slate-400">Description</span>

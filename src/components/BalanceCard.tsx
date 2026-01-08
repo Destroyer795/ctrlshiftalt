@@ -129,7 +129,7 @@ export function BalanceCard({
                 transition={{ type: 'spring', stiffness: 200 }}
             >
                 {shadowBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                <span className="text-2xl text-slate-500 ml-2">сом</span>
+                <span className="text-2xl text-slate-500 ml-2">Rs</span>
                 {hasPending && (
                     <span className="text-lg text-slate-600 ml-2">*</span>
                 )}
@@ -147,7 +147,7 @@ export function BalanceCard({
                         {pendingCount} transaction{pendingCount > 1 ? 's' : ''} pending
                         {netPending !== 0 && (
                             <span className="ml-1">
-                                ({netPending > 0 ? '+' : ''}{netPending.toLocaleString()} сом)
+                                ({netPending > 0 ? '+' : ''}{netPending.toLocaleString()} Rs)
                             </span>
                         )}
                     </span>
@@ -169,7 +169,7 @@ export function BalanceCard({
                         <div className="flex items-center justify-between text-sm">
                             <span className="text-slate-400">Confirmed Balance</span>
                             <span className="text-slate-300 font-mono">
-                                {cachedBalance.toLocaleString()} сом
+                                {cachedBalance.toLocaleString()} Rs
                             </span>
                         </div>
 
@@ -177,7 +177,7 @@ export function BalanceCard({
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-slate-400">Pending Outgoing</span>
                                 <span className="text-red-400 font-mono">
-                                    -{pendingDebits.toLocaleString()} сом
+                                    -{pendingDebits.toLocaleString()} Rs
                                 </span>
                             </div>
                         )}
@@ -186,7 +186,7 @@ export function BalanceCard({
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-slate-400">Pending Incoming</span>
                                 <span className="text-emerald-400 font-mono">
-                                    +{pendingCredits.toLocaleString()} сом
+                                    +{pendingCredits.toLocaleString()} Rs
                                 </span>
                             </div>
                         )}
@@ -194,7 +194,7 @@ export function BalanceCard({
                         <div className="flex items-center justify-between text-sm pt-2 border-t border-white/5">
                             <span className="text-slate-200 font-medium">Safe to Spend</span>
                             <span className="text-white font-bold font-mono">
-                                {shadowBalance.toLocaleString()} сом
+                                {shadowBalance.toLocaleString()} Rs
                             </span>
                         </div>
 

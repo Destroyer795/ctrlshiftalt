@@ -38,7 +38,7 @@ export function PaymentForm({ onSubmit, maxAmount, disabled }: PaymentFormProps)
         }
 
         if (maxAmount && numAmount > maxAmount) {
-            setError(`Insufficient balance. Max: ${maxAmount.toLocaleString()} сом`);
+            setError(`Insufficient balance. Max: ${maxAmount.toLocaleString()} Rs`);
             return;
         }
 
@@ -70,7 +70,7 @@ export function PaymentForm({ onSubmit, maxAmount, disabled }: PaymentFormProps)
             {/* Amount Input */}
             <div className="mb-4">
                 <label htmlFor="amount" className="block text-sm font-medium text-slate-400 mb-2">
-                    Amount (сом)
+                    Amount (Rs)
                 </label>
                 <input
                     type="number"

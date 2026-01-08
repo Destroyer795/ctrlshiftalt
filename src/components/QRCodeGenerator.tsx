@@ -58,7 +58,7 @@ export function QRCodeGenerator({ userId, userName, amount, onClose }: QRCodeGen
             try {
                 await navigator.share({
                     title: 'PhantomPay Payment Request',
-                    text: `Pay ${userName || 'me'} ${amount ? amount + ' сом' : ''}`,
+                    text: `Pay ${userName || 'me'} ${amount ? amount + ' Rs' : ''}`,
                     url: `phantompay://pay?data=${encodeURIComponent(qrData)}`
                 });
             } catch (err) {
@@ -72,7 +72,7 @@ export function QRCodeGenerator({ userId, userName, amount, onClose }: QRCodeGen
             <h3 className="text-lg font-bold text-white mb-2">Your Payment QR</h3>
             <p className="text-slate-400 text-sm mb-6">
                 {amount
-                    ? `Request ${amount.toLocaleString()} сом`
+                    ? `Request ${amount.toLocaleString()} Rs`
                     : 'Scan to pay any amount'}
             </p>
 
