@@ -2,18 +2,8 @@
 
 import React, { useState } from 'react';
 import { Shield, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-
-/**
- * Login Page
- * 
- * Simple email/password authentication.
- * Member C/D can enhance with:
- * - OAuth providers (Google, GitHub)
- * - Magic link login
- * - Better animations
- */
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -22,7 +12,14 @@ export default function LoginPage() {
     const [isSignUp, setIsSignUp] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
+    const [configError, setConfigError] = useState(false);
     const router = useRouter();
+
+    React.useEffect(() => {
+        if (!isSupabaseConfigured()) {
+            setConfigError(true);
+        }
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -30,10 +27,12 @@ export default function LoginPage() {
         setError(null);
         setMessage(null);
 
+        console.log('Attempting auth:', { isSignUp, email });
+
         try {
             if (isSignUp) {
                 // Sign up
-                const { error } = await supabase.auth.signUp({
+                const { data, error } = await supabase.auth.signUp({
                     email,
                     password,
                     options: {
@@ -41,20 +40,39 @@ export default function LoginPage() {
                     }
                 });
 
-                if (error) throw error;
-                setMessage('Check your email for a confirmation link!');
+                if (error) {
+                    console.error('Sign up error:', error);
+                    throw error;
+                }
+
+                console.log('Sign up success:', data);
+
+                if (data.session) {
+                    // Email confirmation is disabled
+                    router.push('/');
+                    router.refresh();
+                } else {
+                    // Email confirmation is enabled
+                    setMessage('Account created! Please check your email inbox (and spam) to confirm.');
+                }
             } else {
                 // Sign in
-                const { error } = await supabase.auth.signInWithPassword({
+                const { data, error } = await supabase.auth.signInWithPassword({
                     email,
                     password
                 });
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Sign in error:', error);
+                    throw error;
+                }
+
+                console.log('Sign in success:', data);
                 router.push('/');
                 router.refresh();
             }
         } catch (err: any) {
+            console.error('Auth handler caught error:', err);
             setError(err.message || 'An error occurred');
         } finally {
             setIsLoading(false);
@@ -77,8 +95,21 @@ export default function LoginPage() {
                     </p>
                 </div>
 
-                {/* Form Card */}
                 <div className="glass-card p-6">
+                    {/* Config Error Warning */}
+                    {configError && (
+                        <div className="mb-6 p-4 bg-amber-500/20 border border-amber-500/30 rounded-xl flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                                <h3 className="text-sm font-semibold text-amber-200">Missing Configuration</h3>
+                                <p className="text-xs text-amber-200/80">
+                                    Supabase environment variables appear to be missing or using default values.
+                                    Auth will not work until you configure <code>.env.local</code>.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     <h2 className="text-xl font-bold text-white mb-6 text-center">
                         {isSignUp ? 'Create Account' : 'Welcome Back'}
                     </h2>
@@ -127,9 +158,37 @@ export default function LoginPage() {
 
                         {/* Error */}
                         {error && (
-                            <div className="flex items-center gap-2 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
-                                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                                {error}
+                            <div className="flex flex-col gap-2 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                                <div className="flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                    {error}
+                                </div>
+                                {error.includes('already registered') && (
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            setMessage(null);
+                                            setError(null);
+                                            setIsLoading(true);
+                                            const { error: resendError } = await supabase.auth.resend({
+                                                type: 'signup',
+                                                email,
+                                                options: {
+                                                    emailRedirectTo: `${window.location.origin}/`,
+                                                }
+                                            });
+                                            setIsLoading(false);
+                                            if (resendError) {
+                                                setError(resendError.message);
+                                            } else {
+                                                setMessage('Confirmation email sent! Please check your inbox and spam folder.');
+                                            }
+                                        }}
+                                        className="text-xs font-semibold underline hover:text-red-300 text-left"
+                                    >
+                                        Resend Confirmation Email?
+                                    </button>
+                                )}
                             </div>
                         )}
 
@@ -141,6 +200,8 @@ export default function LoginPage() {
                         )}
 
                         {/* Submit */}
+
+
                         <button
                             type="submit"
                             className="primary-button w-full flex items-center justify-center gap-2"

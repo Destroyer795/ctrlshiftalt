@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import {
-    Shield, Wallet, ArrowUpRight, ArrowDownLeft,
-    Wifi, WifiOff, RefreshCw, QrCode, Mic, LogOut,
-    Clock, ChevronRight
+    Clock, ChevronRight, LogOut, Shield, RefreshCw, ArrowUpRight, ArrowDownLeft, QrCode, Mic, Wallet
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { useShadowTransaction } from '@/hooks/useShadowTransaction';
@@ -25,12 +25,44 @@ import { VoiceInputButton } from '@/components/VoiceInputButton';
  * - Network status
  */
 
-// Demo user ID (in production, this comes from Supabase Auth)
-const DEMO_USER_ID = 'demo-user-001';
+// Demo user ID removed. Using Supabase Auth.
 
 export default function Dashboard() {
+    const [userId, setUserId] = useState<string | null>(null);
     const [showPaymentForm, setShowPaymentForm] = useState(false);
     const [activeTab, setActiveTab] = useState<'transactions' | 'actions'>('transactions');
+    const router = useRouter();
+
+    // Check Authentication
+    useEffect(() => {
+        const checkAuth = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                router.push('/login');
+            } else {
+                setUserId(user.id);
+            }
+        };
+
+        checkAuth();
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (!session) {
+                router.push('/login');
+            } else {
+                setUserId(session.user.id);
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, [router]);
+
+    // Handle Sign Out
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        router.push('/login');
+    };
 
     // Shadow transaction hook for offline-first logic
     const {
@@ -41,16 +73,19 @@ export default function Dashboard() {
         isOnline,
         addTransaction,
         syncNow
-    } = useShadowTransaction(DEMO_USER_ID);
+    } = useShadowTransaction(userId);
 
     // Live query for transactions from Dexie
     const transactions = useLiveQuery(
-        () => db.transactions
-            .where('user_id')
-            .equals(DEMO_USER_ID)
-            .reverse()
-            .sortBy('timestamp'),
-        []
+        () => {
+            if (!userId) return [];
+            return db.transactions
+                .where('user_id')
+                .equals(userId)
+                .reverse()
+                .sortBy('timestamp');
+        },
+        [userId]
     );
 
     // Handle payment submission
@@ -91,6 +126,14 @@ export default function Dashboard() {
                             Sync {pendingCount}
                         </button>
                     )}
+
+                    <button
+                        onClick={handleSignOut}
+                        className="p-2 hover:bg-white/10 rounded-full transition-colors ml-2"
+                        title="Sign Out"
+                    >
+                        <LogOut className="w-5 h-5 text-slate-400 hover:text-red-400" />
+                    </button>
                 </div>
             </header>
 
