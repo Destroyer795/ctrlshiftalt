@@ -4,19 +4,19 @@
 
 > Your payments are protected by our offline-sync technology. Even if everything goes down, PhantomPay saves every transaction. Now with AI-powered voice commands!
 
-## ✨ What's New: AI Voice Assistant 2.0
+## What's New: AI Voice Assistant 2.0
 
-🎙️ **Conversational AI** - Multi-turn conversations with natural language understanding  
-🎯 **Smart Intent Recognition** - Correctly identifies payment vs receive commands  
-🗣️ **Voice Feedback** - Speaks responses using text-to-speech  
-💬 **Query Support** - Ask for balance, transactions, and more  
-🌐 **Multiple Formats** - Understands "2k", "2 lakh", "two thousand" and more  
+**Conversational AI** - Multi-turn conversations with natural language understanding  
+**Smart Intent Recognition** - Correctly identifies payment vs receive commands  
+**Voice Feedback** - Speaks responses using text-to-speech  
+**Query Support** - Ask for balance, transactions, and more  
+**Multiple Formats** - Understands "2k", "2 lakh", "two thousand" and more  
 
 **Try it:**
-- "Pay 500 for lunch" 💸
-- "Received 2000 from client" 💰
-- "What's my balance?" 💳
-- "Show last transaction" 📊
+- "Pay 500 for lunch"
+- "Received 2000 from client"
+- "What's my balance?"
+- "Show last transaction"
 
 ---
 
@@ -61,6 +61,7 @@ npm install
   - `supabase/migrations/001_initial_schema.sql` (core schema, RLS, RPC base)
   - `supabase/migrations/002_p2p_transfers.sql` (adds P2P recipient support and updates RPC)
   - `supabase/migrations/003_custom_initial_balance.sql` (supports custom starting balance on signup)
+  - `supabase/migrations/004_lookup_recipient.sql` (converts recipient email to user ID)
 3. Create `.env.local` and fill your credentials:
 
 ```env
