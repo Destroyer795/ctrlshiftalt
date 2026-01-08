@@ -1,5 +1,5 @@
 // ============================================
-// RESILIENT PAY - SHARED TYPES
+// PHANTOM PAY - SHARED TYPES
 // These types are shared across the application
 // ============================================
 

@@ -1,5 +1,5 @@
 /**
- * Cryptographic Utilities for ResilientPay
+ * Cryptographic Utilities for PhantomPay
  * 
  * These functions handle transaction signing to prevent:
  * - Replay attacks
@@ -7,7 +7,7 @@
  */
 
 // Signing salt - in production this should be more secure
-const SIGNING_SALT = process.env.NEXT_PUBLIC_SIGNING_SALT || 'resilient-pay-hackathon-salt-2024';
+const SIGNING_SALT = process.env.NEXT_PUBLIC_SIGNING_SALT || 'phantom-pay-hackathon-salt-2024';
 
 /**
  * Generate a SHA-256 signature for an offline transaction

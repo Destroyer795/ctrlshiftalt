@@ -57,9 +57,9 @@ export function QRCodeGenerator({ userId, userName, amount, onClose }: QRCodeGen
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: 'ResilientPay Payment Request',
+                    title: 'PhantomPay Payment Request',
                     text: `Pay ${userName || 'me'} ${amount ? amount + ' сом' : ''}`,
-                    url: `resilientpay://pay?data=${encodeURIComponent(qrData)}`
+                    url: `phantompay://pay?data=${encodeURIComponent(qrData)}`
                 });
             } catch (err) {
                 console.error('Share failed:', err);

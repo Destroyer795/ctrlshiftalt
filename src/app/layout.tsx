@@ -5,15 +5,15 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-    title: "ResilientPay | Offline-First Payment Tracker",
-    description: "Your payments are protected by our offline-sync technology. Even if everything goes down, ResilientPay saves every transaction.",
+    title: "PhantomPay | Offline-First Payment Tracker",
+    description: "Your payments are protected by our offline-sync technology. Even if everything goes down, PhantomPay saves every transaction.",
     keywords: ["payments", "offline", "fintech", "PWA", "sync"],
     authors: [{ name: "Build2Break Hackathon Team" }],
     manifest: "/manifest.json",
     appleWebApp: {
         capable: true,
         statusBarStyle: "black-translucent",
-        title: "ResilientPay",
+        title: "PhantomPay",
     },
 };
 

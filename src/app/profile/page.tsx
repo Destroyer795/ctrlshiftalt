@@ -19,7 +19,7 @@ import { QRCodeGenerator, QRRequestModal } from '@/components/QRCodeGenerator';
 const DEMO_USER = {
     id: 'demo-user-001',
     name: 'Demo User',
-    email: 'demo@resilientpay.app'
+    email: 'demo@phantompay.app'
 };
 
 export default function ProfilePage() {
@@ -119,7 +119,7 @@ export default function ProfilePage() {
 
                 {/* App Info */}
                 <section className="text-center pt-4">
-                    <p className="text-slate-600 text-sm">ResilientPay v0.1.0</p>
+                    <p className="text-slate-600 text-sm">PhantomPay v0.1.0</p>
                     <p className="text-slate-700 text-xs mt-1">Build2Break Hackathon 2024</p>
                 </section>
             </div>

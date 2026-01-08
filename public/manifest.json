@@ -1,6 +1,6 @@
 {
-    "name": "ResilientPay",
-    "short_name": "ResilientPay",
+    "name": "PhantomPay",
+    "short_name": "PhantomPay",
     "description": "Offline-first payment tracker that never loses your transactions",
     "start_url": "/",
     "display": "standalone",

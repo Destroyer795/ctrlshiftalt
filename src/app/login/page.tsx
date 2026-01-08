@@ -70,7 +70,7 @@ export default function LoginPage() {
                         <Shield className="w-10 h-10 text-white" />
                     </div>
                     <h1 className="text-2xl font-bold text-white">
-                        Resilient<span className="text-indigo-500">Pay</span>
+                        Phantom<span className="text-indigo-500">Pay</span>
                     </h1>
                     <p className="text-slate-500 text-sm mt-2">
                         Offline-First Payment Tracker

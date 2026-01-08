@@ -77,7 +77,7 @@ export default function Dashboard() {
                             <Shield className="w-6 h-6 text-white" />
                         </div>
                         <h1 className="text-xl font-bold">
-                            Resilient<span className="text-indigo-500">Pay</span>
+                            Phantom<span className="text-indigo-500">Pay</span>
                         </h1>
                     </div>
 
