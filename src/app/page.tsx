@@ -52,13 +52,10 @@ export default function LoginPage() {
 
         try {
             if (isSignUp) {
-                // Validate initial balance
+                // Validate initial balance - only check for negative numbers
                 const balanceValue = initialBalance ? parseFloat(initialBalance) : 10000;
                 if (isNaN(balanceValue) || balanceValue < 0) {
-                    throw new Error('Please enter a valid initial balance');
-                }
-                if (balanceValue > 10000000) {
-                    throw new Error('Initial balance cannot exceed 10,000,000');
+                    throw new Error('Initial balance cannot be negative');
                 }
 
                 // Sign up
@@ -208,8 +205,6 @@ export default function LoginPage() {
                                         placeholder="10000"
                                         className="input-field input-field-with-icon"
                                         min="0"
-                                        max="10000000"
-                                        step="100"
                                         disabled={isLoading}
                                     />
                                 </div>
