@@ -22,6 +22,7 @@ interface UseOnlineStatusResult {
     isReallyOnline: boolean; // True online (not Lie-Fi)
     lastOnlineAt: number | null;
     syncStatus: 'idle' | 'syncing' | 'success' | 'error';
+    lastSyncError: string | null; // BUG-05 Fix: Expose sync errors to UI
     showOfflineIndicator: boolean; // Only true after hysteresis delay
     connectionQuality: 'excellent' | 'good' | 'poor' | 'offline';
     triggerSync: (userId: string) => Promise<void>;
@@ -36,9 +37,10 @@ export function useOnlineStatus(): UseOnlineStatusResult {
     const [isReallyOnline, setIsReallyOnline] = useState(true);
     const [lastOnlineAt, setLastOnlineAt] = useState<number | null>(Date.now());
     const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+    const [lastSyncError, setLastSyncError] = useState<string | null>(null); // BUG-05 Fix
     const [showOfflineIndicator, setShowOfflineIndicator] = useState(false);
     const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'poor' | 'offline'>('excellent');
-    
+
     const offlineTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -79,13 +81,17 @@ export function useOnlineStatus(): UseOnlineStatusResult {
         if (!isReallyOnline) return;
 
         setSyncStatus('syncing');
+        setLastSyncError(null); // Clear previous error
         try {
             await syncOfflineTransactions(userId);
             setSyncStatus('success');
             setTimeout(() => setSyncStatus('idle'), 2000);
-        } catch {
+        } catch (err) {
+            // BUG-05 Fix: Capture and expose error message
+            const errorMessage = err instanceof Error ? err.message : 'Sync failed';
+            setLastSyncError(errorMessage);
             setSyncStatus('error');
-            setTimeout(() => setSyncStatus('idle'), 3000);
+            setTimeout(() => setSyncStatus('idle'), 5000); // Longer display for errors
         }
     }, [isReallyOnline]);
 
@@ -104,7 +110,7 @@ export function useOnlineStatus(): UseOnlineStatusResult {
     // Handle online state - immediate feedback
     const handleOnline = useCallback(async () => {
         setIsOnline(true);
-        
+
         // Clear the offline timeout if reconnection happens quickly
         if (offlineTimeoutRef.current) {
             clearTimeout(offlineTimeoutRef.current);
@@ -117,7 +123,7 @@ export function useOnlineStatus(): UseOnlineStatusResult {
         // Verify it's a real connection
         const reallyOnline = await checkRealConnection();
         setIsReallyOnline(reallyOnline);
-        
+
         if (reallyOnline) {
             setLastOnlineAt(Date.now());
         }
@@ -139,7 +145,7 @@ export function useOnlineStatus(): UseOnlineStatusResult {
             if (navigator.onLine) {
                 const reallyOnline = await checkRealConnection();
                 setIsReallyOnline(reallyOnline);
-                
+
                 // If we detect Lie-Fi, trigger offline state
                 if (!reallyOnline && isOnline) {
                     handleOffline();
@@ -150,7 +156,7 @@ export function useOnlineStatus(): UseOnlineStatusResult {
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
-            
+
             if (offlineTimeoutRef.current) {
                 clearTimeout(offlineTimeoutRef.current);
             }
@@ -165,6 +171,7 @@ export function useOnlineStatus(): UseOnlineStatusResult {
         isReallyOnline,
         lastOnlineAt,
         syncStatus,
+        lastSyncError,
         showOfflineIndicator,
         connectionQuality,
         triggerSync

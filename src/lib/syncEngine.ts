@@ -77,8 +77,9 @@ export async function syncOfflineTransactions(userId: string): Promise<SyncRespo
 
         return response;
     } catch (err) {
+        // BUG-05 Fix: Re-throw error so callers can handle it
         console.error('❌ Sync error:', err);
-        return null;
+        throw err; // Propagate error to caller for proper handling
     }
 }
 
