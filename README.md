@@ -1,4 +1,4 @@
-# ctrlshiftalt
+# PhantomPay
 
 **Offline-First Payment Tracker | Build2Break Hackathon 2026**
 
@@ -109,16 +109,16 @@ docker compose --env-file .env.local up --build
 │  │  - Balance  │    │  - Online   │    │  - wallet           │  │
 │  │  - List     │    │  - Sync     │    │                     │  │
 │  └─────────────┘    └─────────────┘    └──────────┬──────────┘  │
-│                                                    │             │
-│                           ┌────────────────────────┘             │
-│                           ▼                                      │
-│                    ┌─────────────┐                               │
-│                    │ Sync Engine │                               │
-│                    │             │                               │
-│                    │ - Batch     │                               │
-│                    │ - Retry     │                               │
-│                    │ - Sign      │                               │
-│                    └──────┬──────┘                               │
+│                                                    │            │
+│                           ┌────────────────────────┘            │
+│                           ▼                                     │
+│                    ┌─────────────┐                              │
+│                    │ Sync Engine │                              │
+│                    │             │                              │
+│                    │ - Batch     │                              │
+│                    │ - Retry     │                              │
+│                    │ - Sign      │                              │
+│                    └──────┬──────┘                              │
 └───────────────────────────┼─────────────────────────────────────┘
                             │ (When Online)
                             ▼
@@ -130,13 +130,13 @@ docker compose --env-file .env.local up --build
 │  │  - Email/Pass   │    │  │  profiles   │  │ transactions  │  ││
 │  │  - OAuth        │    │  │  - balance  │  │ - offline_id  │  ││
 │  └─────────────────┘    │  └─────────────┘  │ - signature   │  ││
-│                         │                    └───────────────┘  ││
-│                         │  ┌────────────────────────────────┐   ││
-│                         │  │    process_offline_batch()     │   ││
-│                         │  │    - Idempotency check         │   ││
-│                         │  │    - Signature verify          │   ││
-│                         │  │    - Balance validation        │   ││
-│                         │  └────────────────────────────────┘   ││
+│                         │                   └───────────────┘ ││
+│                         │  ┌────────────────────────────────┐  ││
+│                         │  │    process_offline_batch()     │  ││
+│                         │  │    - Idempotency check         │  ││
+│                         │  │    - Signature verify          │  ││
+│                         │  │    - Balance validation        │  ││
+│                         │  └────────────────────────────────┘  ││
 │                         └──────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────┘
 ```
