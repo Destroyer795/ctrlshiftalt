@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db, addOfflineTransaction, getWalletState, updateWalletState, getPendingTransactions } from '@/lib/db';
 import { generateSignature, generateOfflineId } from '@/utils/crypto';
-import { syncOfflineTransactions } from '@/lib/syncEngine';
+import { syncOfflineTransactions, syncWalletFromServer } from '@/lib/syncEngine';
 import { supabase } from '@/lib/supabase';
 import type { OfflineTransaction, WalletState, TransactionType } from '@/lib/types';
 
@@ -110,6 +110,11 @@ export function useShadowTransaction(userId: string | null): UseShadowTransactio
                 shadow_balance: calculatedShadow
             });
             setPendingCount(pending.length);
+
+            // Download latest transactions from server (including incoming P2P transfers)
+            if (navigator.onLine) {
+                syncWalletFromServer(userId).catch(console.error);
+            }
         } catch (err) {
             console.error('Error loading wallet state:', err);
         } finally {
