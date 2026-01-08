@@ -2,9 +2,6 @@
 
 **Offline-First Payment Tracker with AI Voice Assistant | Build2Break Hackathon 2026**
 
-<<<<<<< Updated upstream
-> Your payments are protected by our offline-sync technology. Even if everything goes down, ctrlshiftalt saves every transaction.
-=======
 > Your payments are protected by our offline-sync technology. Even if everything goes down, PhantomPay saves every transaction. Now with AI-powered voice commands!
 
 ## ✨ What's New: AI Voice Assistant 2.0
@@ -21,11 +18,7 @@
 - "What's my balance?" 💳
 - "Show last transaction" 📊
 
-👉 [Voice Assistant Documentation](./VOICE_ASSISTANT_README.md)  
-👉 [Testing Guide](./VOICE_TESTING_GUIDE.md)
-
 ---
->>>>>>> Stashed changes
 
 ## The Problem
 
