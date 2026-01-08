@@ -40,6 +40,7 @@ npm install
 ### 2. Configure Supabase
 
 1. Create a new project at [supabase.com](https://supabase.com)
+<<<<<<< Updated upstream
 2. Run the SQL migration:
    - Go to SQL Editor
    - Copy contents of `supabase/migrations/001_initial_schema.sql`
@@ -52,6 +53,14 @@ cp .env.example .env.local
 ```
 
 Edit `.env.local` with your Supabase credentials:
+=======
+2. Apply all three migrations **in order** via the SQL Editor:
+  - `supabase/migrations/001_initial_schema.sql` (core schema, RLS, RPC base)
+  - `supabase/migrations/002_p2p_transfers.sql` (adds P2P recipient support and updates RPC)
+  - `supabase/migrations/003_custom_initial_balance.sql` (supports custom starting balance on signup)
+  - `supabase/migrations/004_lookup_recipient.sql` (enables secure user lookup by email)
+3. Create `.env.local` and fill your credentials:
+>>>>>>> Stashed changes
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co

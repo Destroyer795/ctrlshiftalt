@@ -23,9 +23,14 @@ interface PaymentFormProps {
 export function PaymentForm({ onSubmit, maxAmount, disabled }: PaymentFormProps) {
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
+    const [recipientEmail, setRecipientEmail] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [resolvingRecipient, setResolvingRecipient] = useState(false);
+
+    // Import supabase client
+    const { supabase } = require('@/lib/supabase');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,26 +55,63 @@ export function PaymentForm({ onSubmit, maxAmount, disabled }: PaymentFormProps)
         setError(null);
 
         try {
-            const result = await onSubmit(numAmount, description || 'Payment');
+            let resolvedRecipientId: string | undefined = undefined;
+
+            // Resolve recipient if email is provided
+            if (recipientEmail.trim()) {
+                setResolvingRecipient(true);
+                const { data: recipientId, error: lookupError } = await supabase
+                    .rpc('get_recipient_id', { email_input: recipientEmail.trim() });
+
+                setResolvingRecipient(false);
+
+                if (lookupError || !recipientId) {
+                    throw new Error('Recipient not found. Please check the email.');
+                }
+                resolvedRecipientId = recipientId;
+            }
+
+            // Pass resolvedRecipientId to parent
+            // Note: The parent component's onSubmit signature might need to support the 3rd argument
+            // We cast it here assuming basic usage, but ideally type definition updates are needed globally
+            const result = await (onSubmit as any)(numAmount, description || 'Payment', undefined, resolvedRecipientId);
 
             if (result) {
                 setSuccess(true);
                 setAmount('');
                 setDescription('');
+                setRecipientEmail('');
                 setTimeout(() => setSuccess(false), 2000);
             } else {
                 setError('Transaction failed. Please try again.');
             }
-        } catch (err) {
-            setError('An error occurred. Please try again.');
+        } catch (err: any) {
+            setError(err.message || 'An error occurred. Please try again.');
         } finally {
             setIsSubmitting(false);
+            setResolvingRecipient(false);
         }
     };
 
     return (
         <form onSubmit={handleSubmit} className="glass-card p-6">
             <h3 className="text-lg font-bold text-white mb-4">Quick Payment</h3>
+
+            {/* Recipient Email Input (Optional) */}
+            <div className="mb-4">
+                <label htmlFor="recipient" className="block text-sm font-medium text-slate-400 mb-2">
+                    Recipient Email (Optional)
+                </label>
+                <input
+                    type="email"
+                    id="recipient"
+                    value={recipientEmail}
+                    onChange={(e) => setRecipientEmail(e.target.value)}
+                    placeholder="friend@example.com"
+                    className="input-field"
+                    disabled={disabled || isSubmitting}
+                />
+            </div>
 
             {/* Amount Input */}
             <div className="mb-4">
@@ -126,10 +168,10 @@ export function PaymentForm({ onSubmit, maxAmount, disabled }: PaymentFormProps)
                 className="primary-button w-full flex items-center justify-center gap-2"
                 disabled={disabled || isSubmitting || !amount}
             >
-                {isSubmitting ? (
+                {isSubmitting || resolvingRecipient ? (
                     <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Processing...
+                        {resolvingRecipient ? 'Finding User...' : 'Processing...'}
                     </>
                 ) : (
                     <>

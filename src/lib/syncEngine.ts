@@ -143,3 +143,65 @@ export async function fetchServerTransactions(userId: string, limit: number = 50
         return null;
     }
 }
+/**
+ * Full Sync: Download latest state from Server to Local DB
+ * 
+ * Used when:
+ * 1. App loads
+ * 2. User comes online
+ * 3. Incoming P2P transaction notification received
+ */
+export async function syncWalletFromServer(userId: string): Promise<void> {
+    if (typeof window === 'undefined' || !navigator.onLine || !isSupabaseConfigured()) {
+        return;
+    }
+
+    try {
+        console.log('⬇️ Starting Down-Sync...');
+
+        // 1. Fetch Balance
+        const balance = await fetchServerBalance(userId);
+        if (balance !== null) {
+            const currentWallet = await db.wallet.get(userId);
+            await updateWalletState({
+                id: userId,
+                // If we have pending local txs, shadow might differ, but cached_balance is truth from server
+                cached_balance: balance,
+                shadow_balance: balance, // simplified strategy: server authority reset
+                // In a perfect CRDT world we'd replay pending on top, 
+                // but for this P2P update, resetting to server balance is safer to see the incoming money immediately.
+                // We will re-apply pending debits if any exist.
+                last_updated: Date.now(),
+                last_sync_success: Date.now()
+            });
+
+            // Re-apply pending debits to shadow balance so we don't think we have more money than we do
+            const { updateWalletPendingAmounts } = require('./db');
+            await updateWalletPendingAmounts(userId);
+        }
+
+        // 2. Fetch Recent Transactions
+        const serverTxs = await fetchServerTransactions(userId, 20); // Get last 20
+        if (serverTxs && serverTxs.length > 0) {
+            const formattedTxs = serverTxs.map((tx: any) => ({
+                offline_id: tx.offline_id,
+                user_id: tx.user_id,
+                amount: tx.amount,
+                type: tx.type,
+                description: tx.description,
+                timestamp: new Date(tx.created_at).getTime(), // Convert ISO to timestamp
+                sync_status: 'synced' as const,
+                signature: tx.signature || 'server-auth',
+                created_at: tx.created_at
+            }));
+
+            // Bulk put (upsert) to Dexie
+            // This ensures new incoming P2P txs appear in the list
+            await db.transactions.bulkPut(formattedTxs);
+            console.log(`⬇️ Downloaded ${serverTxs.length} transactions`);
+        }
+
+    } catch (err) {
+        console.error('❌ Down-Sync failed:', err);
+    }
+}
