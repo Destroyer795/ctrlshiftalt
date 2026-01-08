@@ -1,0 +1,218 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { db, addOfflineTransaction, getWalletState, updateWalletState, getPendingTransactions } from '@/lib/db';
+import { generateSignature, generateOfflineId } from '@/utils/crypto';
+import { syncOfflineTransactions } from '@/lib/syncEngine';
+import type { OfflineTransaction, WalletState, TransactionType } from '@/lib/types';
+
+/**
+ * useShadowTransaction Hook
+ * 
+ * This hook manages the "Shadow Ledger" - the offline-first transaction system.
+ * It provides:
+ * - Real-time shadow balance calculation
+ * - Offline transaction creation with signing
+ * - Automatic sync when online
+ * 
+ * Member B should enhance this hook with:
+ * - Conflict resolution
+ * - Retry logic
+ * - Server balance reconciliation
+ */
+
+interface UseShadowTransactionResult {
+    shadowBalance: number;
+    cachedBalance: number;
+    pendingCount: number;
+    isLoading: boolean;
+    isOnline: boolean;
+    addTransaction: (amount: number, description: string, type: TransactionType) => Promise<boolean>;
+    refreshBalance: () => Promise<void>;
+    syncNow: () => Promise<void>;
+}
+
+export function useShadowTransaction(userId: string | null): UseShadowTransactionResult {
+    const [walletState, setWalletState] = useState<WalletState | null>(null);
+    const [pendingCount, setPendingCount] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isOnline, setIsOnline] = useState(true);
+
+    // Load initial wallet state
+    const loadWalletState = useCallback(async () => {
+        if (!userId) {
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            let state = await getWalletState(userId);
+
+            // Initialize if doesn't exist
+            if (!state) {
+                state = {
+                    id: userId,
+                    cached_balance: 10000, // Default starting balance
+                    shadow_balance: 10000,
+                    last_updated: Date.now()
+                };
+                await updateWalletState(state);
+            }
+
+            // Recalculate shadow balance based on pending transactions
+            const pending = await getPendingTransactions(userId);
+            let pendingDebits = 0;
+            let pendingCredits = 0;
+
+            pending.forEach(tx => {
+                if (tx.type === 'debit') {
+                    pendingDebits += tx.amount;
+                } else {
+                    pendingCredits += tx.amount;
+                }
+            });
+
+            const calculatedShadow = state.cached_balance - pendingDebits + pendingCredits;
+
+            setWalletState({
+                ...state,
+                shadow_balance: calculatedShadow
+            });
+            setPendingCount(pending.length);
+        } catch (err) {
+            console.error('Error loading wallet state:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [userId]);
+
+    // Handle online/offline status
+    useEffect(() => {
+        setIsOnline(navigator.onLine);
+
+        const handleOnline = () => {
+            setIsOnline(true);
+            // Trigger sync when coming back online
+            if (userId) {
+                syncNow();
+            }
+        };
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, [userId]);
+
+    // Load wallet state on mount
+    useEffect(() => {
+        loadWalletState();
+    }, [loadWalletState]);
+
+    /**
+     * Add a new offline transaction
+     */
+    const addTransaction = async (
+        amount: number,
+        description: string,
+        type: TransactionType
+    ): Promise<boolean> => {
+        if (!userId || !walletState) {
+            console.error('Cannot add transaction: No user or wallet state');
+            return false;
+        }
+
+        // Check sufficient balance for debits
+        if (type === 'debit' && walletState.shadow_balance < amount) {
+            console.error('Insufficient shadow balance');
+            return false;
+        }
+
+        try {
+            const timestamp = Date.now();
+            const offlineId = generateOfflineId();
+            const signature = await generateSignature(userId, offlineId, amount, timestamp);
+
+            const transaction: OfflineTransaction = {
+                offline_id: offlineId,
+                user_id: userId,
+                amount,
+                type,
+                description,
+                timestamp,
+                signature,
+                sync_status: 'pending',
+                created_at: new Date(timestamp).toISOString()
+            };
+
+            // Add to local database
+            await addOfflineTransaction(transaction);
+
+            // Update shadow balance immediately
+            const newShadow = type === 'debit'
+                ? walletState.shadow_balance - amount
+                : walletState.shadow_balance + amount;
+
+            const updatedState: WalletState = {
+                ...walletState,
+                shadow_balance: newShadow,
+                last_updated: timestamp
+            };
+
+            await updateWalletState(updatedState);
+            setWalletState(updatedState);
+            setPendingCount(prev => prev + 1);
+
+            console.log(`✅ Transaction recorded offline: ${type} ${amount}`);
+
+            // Try to sync if online
+            if (isOnline) {
+                syncNow();
+            }
+
+            return true;
+        } catch (err) {
+            console.error('Error adding transaction:', err);
+            return false;
+        }
+    };
+
+    /**
+     * Sync pending transactions to server
+     */
+    const syncNow = async () => {
+        if (!userId) return;
+
+        try {
+            const result = await syncOfflineTransactions(userId);
+            if (result) {
+                // Refresh local state after sync
+                await loadWalletState();
+            }
+        } catch (err) {
+            console.error('Sync error:', err);
+        }
+    };
+
+    /**
+     * Refresh balance from server
+     */
+    const refreshBalance = async () => {
+        await loadWalletState();
+    };
+
+    return {
+        shadowBalance: walletState?.shadow_balance ?? 0,
+        cachedBalance: walletState?.cached_balance ?? 0,
+        pendingCount,
+        isLoading,
+        isOnline,
+        addTransaction,
+        refreshBalance,
+        syncNow
+    };
+}
