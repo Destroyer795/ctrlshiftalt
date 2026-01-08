@@ -1,278 +1,245 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import {
-    Clock, ChevronRight, LogOut, Shield, RefreshCw, ArrowUpRight, ArrowDownLeft, QrCode, Mic, Wallet
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { Shield, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
-import { useShadowTransaction } from '@/hooks/useShadowTransaction';
-import { BalanceCard } from '@/components/BalanceCard';
-import { TransactionList } from '@/components/TransactionList';
-import { PaymentForm } from '@/components/PaymentForm';
-import { NetworkStatus } from '@/components/NetworkStatus';
-import { VoiceInputButton } from '@/components/VoiceInputButton';
 
-/**
- * Main Dashboard Page
- * 
- * This is the primary view showing:
- * - Balance (shadow balance for offline safety)
- * - Quick actions (Pay/Receive)
- * - Recent transactions
- * - Network status
- */
-
-// Demo user ID removed. Using Supabase Auth.
-
-export default function Dashboard() {
-    const [userId, setUserId] = useState<string | null>(null);
-    const [showPaymentForm, setShowPaymentForm] = useState(false);
-    const [activeTab, setActiveTab] = useState<'transactions' | 'actions'>('transactions');
+export default function LoginPage() {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSignUp, setIsSignUp] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [message, setMessage] = useState<string | null>(null);
+    const [configError, setConfigError] = useState(false);
     const router = useRouter();
 
-    // Check Authentication
-    useEffect(() => {
-        const checkAuth = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                router.push('/login');
-            } else {
-                setUserId(user.id);
-            }
-        };
-
-        checkAuth();
-
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (!session) {
-                router.push('/login');
-            } else {
-                setUserId(session.user.id);
-            }
-        });
-
-        return () => subscription.unsubscribe();
-    }, [router]);
-
-    // Handle Sign Out
-    const handleSignOut = async () => {
-        await supabase.auth.signOut();
-        router.push('/login');
-    };
-
-    // Shadow transaction hook for offline-first logic
-    const {
-        shadowBalance,
-        cachedBalance,
-        pendingCount,
-        isLoading,
-        isOnline,
-        addTransaction,
-        syncNow
-    } = useShadowTransaction(userId);
-
-    // Live query for transactions from Dexie
-    const transactions = useLiveQuery(
-        () => {
-            if (!userId) return [];
-            return db.transactions
-                .where('user_id')
-                .equals(userId)
-                .reverse()
-                .sortBy('timestamp');
-        },
-        [userId]
-    );
-
-    // Handle payment submission
-    const handlePayment = async (amount: number, description: string) => {
-        const success = await addTransaction(amount, description, 'debit');
-        if (success) {
-            setShowPaymentForm(false);
+    React.useEffect(() => {
+        if (!isSupabaseConfigured()) {
+            setConfigError(true);
         }
-        return success;
-    };
+    }, []);
 
-    // Handle receiving money
-    const handleReceive = async (amount: number, description: string) => {
-        return await addTransaction(amount, description, 'credit');
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+        setMessage(null);
+
+        console.log('Attempting auth:', { isSignUp, email });
+
+        try {
+            if (isSignUp) {
+                // Sign up
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        emailRedirectTo: `${window.location.origin}/`,
+                    }
+                });
+
+                if (error) {
+                    console.error('Sign up error:', error);
+                    throw error;
+                }
+
+                console.log('Sign up success:', data);
+
+                if (data.session) {
+                    // Email confirmation is disabled
+                    router.push('/dashboard');
+                    router.refresh();
+                } else {
+                    // Email confirmation is enabled
+                    setMessage('Account created! Please check your email inbox (and spam) to confirm.');
+                }
+            } else {
+                // Sign in
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) {
+                    console.error('Sign in error:', error);
+                    throw error;
+                }
+
+                console.log('Sign in success:', data);
+                router.push('/dashboard');
+                router.refresh();
+            }
+        } catch (err: any) {
+            console.error('Auth handler caught error:', err);
+            setError(err.message || 'An error occurred');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
-        <main className="min-h-screen pb-24">
-            {/* Header */}
-            <header className="sticky top-0 z-50 bg-[#0a0a0b]/90 backdrop-blur-xl border-b border-white/5">
-                <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                            <Shield className="w-6 h-6 text-white" />
-                        </div>
-                        <h1 className="text-xl font-bold">
-                            Phantom<span className="text-indigo-500">Pay</span>
-                        </h1>
+        <main className="min-h-screen flex items-center justify-center p-4">
+            <div className="w-full max-w-md">
+                {/* Logo */}
+                <div className="flex flex-col items-center mb-8">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-4 animate-float">
+                        <Shield className="w-10 h-10 text-white" />
                     </div>
+                    <h1 className="text-2xl font-bold text-white">
+                        Phantom<span className="text-indigo-500">Pay</span>
+                    </h1>
+                    <p className="text-slate-500 text-sm mt-2">
+                        Offline-First Payment Tracker
+                    </p>
+                </div>
 
-                    {/* Sync Button */}
-                    {pendingCount > 0 && isOnline && (
-                        <button
-                            onClick={syncNow}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 rounded-lg text-indigo-400 text-sm font-medium transition-colors"
-                        >
-                            <RefreshCw className="w-4 h-4" />
-                            Sync {pendingCount}
-                        </button>
+                <div className="glass-card p-6">
+                    {/* Config Error Warning */}
+                    {configError && (
+                        <div className="mb-6 p-4 bg-amber-500/20 border border-amber-500/30 rounded-xl flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                                <h3 className="text-sm font-semibold text-amber-200">Missing Configuration</h3>
+                                <p className="text-xs text-amber-200/80">
+                                    Supabase environment variables appear to be missing or using default values.
+                                    Auth will not work until you configure <code>.env.local</code>.
+                                </p>
+                            </div>
+                        </div>
                     )}
 
-                    <button
-                        onClick={handleSignOut}
-                        className="p-2 hover:bg-white/10 rounded-full transition-colors ml-2"
-                        title="Sign Out"
-                    >
-                        <LogOut className="w-5 h-5 text-slate-400 hover:text-red-400" />
-                    </button>
-                </div>
-            </header>
+                    <h2 className="text-xl font-bold text-white mb-6 text-center">
+                        {isSignUp ? 'Create Account' : 'Welcome Back'}
+                    </h2>
 
-            <div className="container mx-auto px-4 py-6 space-y-6">
-                {/* Network Status Banner */}
-                <NetworkStatus
-                    isOnline={isOnline}
-                    pendingCount={pendingCount}
-                    onSyncClick={syncNow}
-                />
-
-                {/* Balance Card */}
-                <BalanceCard
-                    shadowBalance={shadowBalance}
-                    cachedBalance={cachedBalance}
-                    pendingCount={pendingCount}
-                    isOnline={isOnline}
-                    isLoading={isLoading}
-                />
-
-                {/* Quick Actions */}
-                <section className="grid grid-cols-2 gap-4">
-                    <button
-                        onClick={() => setShowPaymentForm(true)}
-                        className="glass-card p-5 flex flex-col items-center gap-3 hover:border-indigo-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    >
-                        <div className="w-14 h-14 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                            <ArrowUpRight className="w-7 h-7 text-indigo-400" />
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {/* Email */}
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-slate-400 mb-2">
+                                Email
+                            </label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                <input
+                                    type="email"
+                                    id="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="you@example.com"
+                                    className="input-field pl-11"
+                                    required
+                                    disabled={isLoading}
+                                />
+                            </div>
                         </div>
-                        <span className="font-semibold text-white">Pay</span>
-                    </button>
 
-                    <button
-                        onClick={() => {
-                            const amount = prompt('Enter amount to receive:');
-                            if (amount) {
-                                const numAmount = parseFloat(amount);
-                                if (!isNaN(numAmount) && numAmount > 0) {
-                                    handleReceive(numAmount, 'Received payment');
-                                }
-                            }
-                        }}
-                        className="glass-card p-5 flex flex-col items-center gap-3 hover:border-emerald-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    >
-                        <div className="w-14 h-14 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                            <ArrowDownLeft className="w-7 h-7 text-emerald-400" />
+                        {/* Password */}
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium text-slate-400 mb-2">
+                                Password
+                            </label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                <input
+                                    type="password"
+                                    id="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    className="input-field pl-11"
+                                    required
+                                    minLength={6}
+                                    disabled={isLoading}
+                                />
+                            </div>
                         </div>
-                        <span className="font-semibold text-white">Receive</span>
-                    </button>
-                </section>
 
-                {/* Additional Actions */}
-                <section className="grid grid-cols-2 gap-4">
-                    <button className="glass-card p-4 flex items-center gap-3 hover:border-purple-500/30 transition-colors">
-                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-                            <QrCode className="w-5 h-5 text-purple-400" />
-                        </div>
-                        <div className="text-left">
-                            <span className="font-medium text-white text-sm">QR Code</span>
-                            <p className="text-xs text-slate-500">Scan to pay</p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-slate-600 ml-auto" />
-                    </button>
-
-                    <button className="glass-card p-4 flex items-center gap-3 hover:border-amber-500/30 transition-colors">
-                        <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                            <Mic className="w-5 h-5 text-amber-400" />
-                        </div>
-                        <div className="text-left">
-                            <span className="font-medium text-white text-sm">Voice</span>
-                            <p className="text-xs text-slate-500">Zudu AI</p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-slate-600 ml-auto" />
-                    </button>
-                </section>
-
-                {/* Transaction List */}
-                <section>
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold text-white">Recent Transactions</h2>
-                        {transactions && transactions.length > 0 && (
-                            <span className="text-sm text-slate-500">
-                                {transactions.length} total
-                            </span>
+                        {/* Error */}
+                        {error && (
+                            <div className="flex flex-col gap-2 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                                <div className="flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                    {error}
+                                </div>
+                                {error.includes('already registered') && (
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            setMessage(null);
+                                            setError(null);
+                                            setIsLoading(true);
+                                            const { error: resendError } = await supabase.auth.resend({
+                                                type: 'signup',
+                                                email,
+                                                options: {
+                                                    emailRedirectTo: `${window.location.origin}/`,
+                                                }
+                                            });
+                                            setIsLoading(false);
+                                            if (resendError) {
+                                                setError(resendError.message);
+                                            } else {
+                                                setMessage('Confirmation email sent! Please check your inbox and spam folder.');
+                                            }
+                                        }}
+                                        className="text-xs font-semibold underline hover:text-red-300 text-left"
+                                    >
+                                        Resend Confirmation Email?
+                                    </button>
+                                )}
+                            </div>
                         )}
-                    </div>
-                    <TransactionList
-                        transactions={transactions || []}
-                        isLoading={isLoading}
-                    />
-                </section>
-            </div>
 
-            {/* Payment Modal */}
-            {showPaymentForm && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-                    <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                        onClick={() => setShowPaymentForm(false)}
-                    />
-                    <div className="relative w-full max-w-md mx-4 mb-4 sm:mb-0 animate-fade-in">
-                        <PaymentForm
-                            onSubmit={handlePayment}
-                            maxAmount={shadowBalance}
-                            disabled={false}
-                        />
+                        {/* Success Message */}
+                        {message && (
+                            <div className="p-3 bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-400 text-sm">
+                                {message}
+                            </div>
+                        )}
+
+                        {/* Submit */}
+
+
                         <button
-                            onClick={() => setShowPaymentForm(false)}
-                            className="mt-3 w-full secondary-button"
+                            type="submit"
+                            className="primary-button w-full flex items-center justify-center gap-2"
+                            disabled={isLoading}
                         >
-                            Cancel
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                                </>
+                            ) : (
+                                isSignUp ? 'Create Account' : 'Sign In'
+                            )}
+                        </button>
+                    </form>
+
+                    {/* Toggle */}
+                    <div className="mt-6 text-center">
+                        <button
+                            onClick={() => {
+                                setIsSignUp(!isSignUp);
+                                setError(null);
+                                setMessage(null);
+                            }}
+                            className="text-slate-400 hover:text-white text-sm transition-colors"
+                        >
+                            {isSignUp
+                                ? 'Already have an account? Sign in'
+                                : "Don't have an account? Sign up"}
                         </button>
                     </div>
                 </div>
-            )}
 
-            {/* Voice Input FAB */}
-            <VoiceInputButton
-                onTransaction={addTransaction}
-                disabled={isLoading}
-            />
-
-            {/* Bottom Navigation (for mobile) */}
-            <nav className="fixed bottom-0 left-0 right-0 bg-[#0a0a0b]/95 backdrop-blur-xl border-t border-white/5 py-2 px-4 sm:hidden">
-                <div className="flex items-center justify-around">
-                    <button className="flex flex-col items-center gap-1 px-4 py-2 text-indigo-400">
-                        <Wallet className="w-5 h-5" />
-                        <span className="text-xs font-medium">Wallet</span>
-                    </button>
-                    <button className="flex flex-col items-center gap-1 px-4 py-2 text-slate-500">
-                        <Clock className="w-5 h-5" />
-                        <span className="text-xs font-medium">History</span>
-                    </button>
-                    <button className="flex flex-col items-center gap-1 px-4 py-2 text-slate-500">
-                        <QrCode className="w-5 h-5" />
-                        <span className="text-xs font-medium">QR</span>
-                    </button>
-                </div>
-            </nav>
+                {/* Demo Note */}
+                <p className="text-center text-slate-600 text-xs mt-6">
+                    Build2Break Hackathon 2024
+                </p>
+            </div>
         </main>
     );
 }

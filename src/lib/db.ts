@@ -28,8 +28,8 @@ export class ResilientDB extends Dexie {
         // Format: 'keyPath, index1, index2, ...'
         // ++id = auto-increment primary key
         this.version(1).stores({
-            transactions: '++id, offline_id, user_id, sync_status, timestamp, type',
-            wallet: 'id, last_updated'
+            transactions: '++id, offline_id, user_id, amount, type, description, timestamp, sync_status, signature',
+            wallet: 'id, cached_balance, shadow_balance, last_updated'
         });
     }
 }
