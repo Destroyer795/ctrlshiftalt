@@ -46,6 +46,12 @@ export async function syncOfflineTransactions(userId: string): Promise<SyncRespo
 
         console.log(`🔄 Syncing ${pending.length} transactions...`);
 
+        // DEBUG: Log the exact payload to verify recipient_id is present
+        console.log('📦 Sync Payload:', JSON.stringify({ transactions: pending }, null, 2));
+        pending.forEach((tx, i) => {
+            console.log(`  Transaction ${i + 1}: type=${tx.type}, amount=${tx.amount}, recipient_id=${tx.recipient_id || 'NONE'}`);
+        });
+
         // Call the Supabase RPC function to process batch
         const { data, error } = await supabase.rpc('process_offline_batch', {
             payload: { transactions: pending }
