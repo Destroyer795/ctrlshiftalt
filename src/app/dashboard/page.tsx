@@ -43,7 +43,7 @@ export default function Dashboard() {
         const checkAuth = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
-                router.push('/');
+                router.replace('/');
             } else {
                 setUserId(user.id);
                 setUserName(user.email?.split('@')[0] || 'User');
@@ -53,10 +53,24 @@ export default function Dashboard() {
 
         checkAuth();
 
+        // Re-check auth when page becomes visible (handles browser back/forward)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                checkAuth();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Also check on popstate (browser back/forward buttons)
+        const handlePopState = () => {
+            checkAuth();
+        };
+        window.addEventListener('popstate', handlePopState);
+
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             if (!session) {
-                router.push('/');
+                router.replace('/');
             } else {
                 setUserId(session.user.id);
                 setUserName(session.user.email?.split('@')[0] || 'User');
@@ -64,13 +78,17 @@ export default function Dashboard() {
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            subscription.unsubscribe();
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('popstate', handlePopState);
+        };
     }, [router]);
 
     // Handle Sign Out
     const handleSignOut = async () => {
         await supabase.auth.signOut();
-        router.push('/');
+        router.replace('/');
     };
 
     // Shadow transaction hook for offline-first logic

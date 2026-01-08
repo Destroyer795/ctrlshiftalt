@@ -20,8 +20,27 @@ export default function LoginPage() {
     React.useEffect(() => {
         if (!isSupabaseConfigured()) {
             setConfigError(true);
+            return;
         }
-    }, []);
+
+        // Check if user is already authenticated
+        const checkExistingAuth = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                router.replace('/dashboard');
+            }
+        };
+        checkExistingAuth();
+
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session) {
+                router.replace('/dashboard');
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, [router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -63,8 +82,7 @@ export default function LoginPage() {
 
                 if (data.session) {
                     // Email confirmation is disabled
-                    router.push('/dashboard');
-                    router.refresh();
+                    router.replace('/dashboard');
                 } else {
                     // Email confirmation is enabled
                     setMessage('Account created! Please check your email inbox (and spam) to confirm.');
@@ -82,8 +100,7 @@ export default function LoginPage() {
                 }
 
                 console.log('Sign in success:', data);
-                router.push('/dashboard');
-                router.refresh();
+                router.replace('/dashboard');
             }
         } catch (err: any) {
             console.error('Auth handler caught error:', err);
