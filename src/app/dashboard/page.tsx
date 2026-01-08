@@ -111,9 +111,10 @@ export default function Dashboard() {
         return await addTransaction(amount, description, 'credit');
     };
 
-    // Handle QR payment (from scanner)
+    // Handle QR payment (from scanner) - P2P transfer
     const handleQRPayment = async (amount: number, recipientId: string, description: string) => {
-        const success = await addTransaction(amount, description, 'debit');
+        // Pass recipientId for P2P transfer - server will credit recipient
+        const success = await addTransaction(amount, description, 'debit', recipientId);
         if (success) {
             setShowQRScan(false);
         }

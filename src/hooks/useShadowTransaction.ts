@@ -27,7 +27,7 @@ interface UseShadowTransactionResult {
     pendingCount: number;
     isLoading: boolean;
     isOnline: boolean;
-    addTransaction: (amount: number, description: string, type: TransactionType) => Promise<boolean>;
+    addTransaction: (amount: number, description: string, type: TransactionType, recipientId?: string) => Promise<boolean>;
     refreshBalance: () => Promise<void>;
     syncNow: () => Promise<void>;
 }
@@ -115,11 +115,13 @@ export function useShadowTransaction(userId: string | null): UseShadowTransactio
 
     /**
      * Add a new offline transaction
+     * @param recipientId - Optional recipient ID for P2P transfers
      */
     const addTransaction = async (
         amount: number,
         description: string,
-        type: TransactionType
+        type: TransactionType,
+        recipientId?: string
     ): Promise<boolean> => {
         if (!userId || !walletState) {
             console.error('Cannot add transaction: No user or wallet state');
@@ -140,6 +142,7 @@ export function useShadowTransaction(userId: string | null): UseShadowTransactio
             const transaction: OfflineTransaction = {
                 offline_id: offlineId,
                 user_id: userId,
+                recipient_id: recipientId, // For P2P transfers
                 amount,
                 type,
                 description,

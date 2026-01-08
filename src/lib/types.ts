@@ -13,6 +13,7 @@ export type TransactionType = 'credit' | 'debit';
  */
 export type SyncStatus = 'pending' | 'syncing' | 'synced' | 'failed' | 'conflict';
 
+
 /**
  * Offline Transaction stored in Dexie (IndexedDB)
  */
@@ -20,6 +21,7 @@ export interface OfflineTransaction {
     id?: number; // Auto-increment for local indexing
     offline_id: string; // UUID v4 generated on client - IDEMPOTENCY KEY
     user_id: string; // User's Supabase ID
+    recipient_id?: string; // Recipient's ID for P2P transfers
     amount: number;
     type: TransactionType;
     description: string;

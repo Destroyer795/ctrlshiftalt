@@ -7,8 +7,8 @@ import type { QRPaymentData } from '@/lib/types';
 /**
  * QR Code Scanner Component
  * 
- * Uses html5-qrcode with proper DOM isolation to prevent React conflicts.
- * The scanner container is managed outside of React's reconciliation.
+ * Uses html5-qrcode with proper DOM isolation.
+ * Fixed callback closure issues with refs.
  */
 
 interface QRCodeScannerProps {
@@ -28,53 +28,18 @@ export function QRCodeScanner({ onScan, onClose, maxAmount }: QRCodeScannerProps
     const containerRef = useRef<HTMLDivElement>(null);
     const scannerContainerId = useRef(`qr-scanner-${Date.now()}`);
     const isMountedRef = useRef(true);
-    const isCleaningUpRef = useRef(false);
+    const hasScannedRef = useRef(false); // Use ref to track if already scanned
 
-    // Safe cleanup function
-    const cleanupScanner = useCallback(async () => {
-        if (isCleaningUpRef.current) return;
-        isCleaningUpRef.current = true;
-
-        try {
-            if (scannerRef.current) {
-                try {
-                    await scannerRef.current.stop();
-                } catch (e) {
-                    // Ignore stop errors
-                }
-                try {
-                    scannerRef.current.clear();
-                } catch (e) {
-                    // Ignore clear errors
-                }
-                scannerRef.current = null;
-            }
-        } catch (e) {
-            console.log('Cleanup handled:', e);
-        }
-
-        // Manually clear the container to prevent React conflicts
-        if (containerRef.current) {
-            try {
-                containerRef.current.innerHTML = '';
-            } catch (e) {
-                // Ignore
-            }
-        }
-
-        isCleaningUpRef.current = false;
-    }, []);
-
-    // Initialize scanner
+    // Initialize and cleanup scanner
     useEffect(() => {
         isMountedRef.current = true;
-        isCleaningUpRef.current = false;
+        hasScannedRef.current = false;
 
         const initScanner = async () => {
             if (!containerRef.current || !isMountedRef.current) return;
 
             try {
-                // Create a dedicated div for the scanner that won't be managed by React
+                // Create dedicated div for scanner
                 const scannerId = scannerContainerId.current;
                 const scannerDiv = document.createElement('div');
                 scannerDiv.id = scannerId;
@@ -82,7 +47,7 @@ export function QRCodeScanner({ onScan, onClose, maxAmount }: QRCodeScannerProps
                 scannerDiv.style.height = '100%';
                 containerRef.current.appendChild(scannerDiv);
 
-                // Dynamic import to avoid SSR issues
+                // Dynamic import
                 const { Html5Qrcode } = await import('html5-qrcode');
 
                 if (!isMountedRef.current) {
@@ -99,58 +64,93 @@ export function QRCodeScanner({ onScan, onClose, maxAmount }: QRCodeScannerProps
                         fps: 10,
                         qrbox: { width: 250, height: 250 },
                     },
+                    // Success callback
                     (decodedText: string) => {
-                        if (!isMountedRef.current || scannedData) return;
+                        // Use ref to prevent multiple scans
+                        if (!isMountedRef.current || hasScannedRef.current) return;
+
+                        console.log('QR Scanned:', decodedText);
 
                         try {
                             const data = JSON.parse(decodedText) as QRPaymentData;
 
-                            if (!data.recipient_id || !data.timestamp || !data.signature) {
-                                setError('Invalid QR code format');
+                            // Validate
+                            if (!data.recipient_id) {
+                                console.error('Missing recipient_id');
                                 return;
                             }
 
-                            // Stop scanner first
-                            html5QrCode.stop().catch(() => { });
+                            // Mark as scanned BEFORE stopping to prevent re-entry
+                            hasScannedRef.current = true;
 
+                            // Stop scanner
+                            html5QrCode.stop().then(() => {
+                                console.log('Scanner stopped');
+                            }).catch((e) => {
+                                console.log('Stop error (ignored):', e);
+                            });
+
+                            // Update state
                             setScannedData(data);
                             if (data.amount) {
                                 setAmount(data.amount.toString());
                             }
-                        } catch {
-                            setError('Not a valid PhantomPay QR code');
+                        } catch (e) {
+                            console.error('QR Parse error:', e);
+                            setError('Invalid QR code format');
                         }
                     },
-                    () => { } // Ignore frame errors
+                    // Error callback - called on every frame without QR
+                    (errorMessage: string) => {
+                        // Only log occasionally to avoid spam
+                        // console.log('Scan frame:', errorMessage);
+                    }
                 );
 
                 if (isMountedRef.current) {
                     setIsInitializing(false);
+                    console.log('Scanner ready');
                 }
             } catch (err: any) {
                 console.error('Scanner init error:', err);
                 if (isMountedRef.current) {
                     if (err.name === 'NotAllowedError') {
-                        setError('Camera permission denied. Please allow camera access.');
+                        setError('Camera permission denied');
                     } else if (err.name === 'NotFoundError') {
-                        setError('No camera found on this device.');
+                        setError('No camera found');
                     } else {
-                        setError('Could not start camera. Please check permissions.');
+                        setError(`Camera error: ${err.message || 'Unknown'}`);
                     }
                     setIsInitializing(false);
                 }
             }
         };
 
-        // Small delay to ensure DOM is ready
-        const timeoutId = setTimeout(initScanner, 100);
+        // Delay to ensure DOM ready
+        const timeoutId = setTimeout(initScanner, 200);
 
+        // Cleanup
         return () => {
             isMountedRef.current = false;
             clearTimeout(timeoutId);
-            cleanupScanner();
+
+            // Cleanup scanner
+            if (scannerRef.current) {
+                try {
+                    scannerRef.current.stop().catch(() => { });
+                    scannerRef.current.clear?.();
+                } catch (e) {
+                    // Ignore
+                }
+                scannerRef.current = null;
+            }
+
+            // Clear container
+            if (containerRef.current) {
+                containerRef.current.innerHTML = '';
+            }
         };
-    }, []); // Empty deps - only run on mount
+    }, []);
 
     const handleConfirmPayment = () => {
         if (!scannedData) return;
@@ -173,9 +173,18 @@ export function QRCodeScanner({ onScan, onClose, maxAmount }: QRCodeScannerProps
         });
     };
 
-    const handleClose = async () => {
+    const handleClose = () => {
         isMountedRef.current = false;
-        await cleanupScanner();
+
+        // Stop and cleanup
+        if (scannerRef.current) {
+            try {
+                scannerRef.current.stop().catch(() => { });
+            } catch (e) {
+                // Ignore
+            }
+        }
+
         onClose();
     };
 
@@ -186,6 +195,7 @@ export function QRCodeScanner({ onScan, onClose, maxAmount }: QRCodeScannerProps
                 <button
                     onClick={handleClose}
                     className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                    type="button"
                 >
                     <X className="w-5 h-5 text-slate-400" />
                 </button>
@@ -209,13 +219,18 @@ export function QRCodeScanner({ onScan, onClose, maxAmount }: QRCodeScannerProps
                         )}
                     </div>
 
-                    <p className="text-slate-400 text-sm text-center">
+                    <p className="text-slate-400 text-sm text-center mb-2">
                         Point camera at a PhantomPay QR code
+                    </p>
+
+                    {/* Debug info */}
+                    <p className="text-slate-600 text-xs text-center">
+                        Camera active: {!isInitializing ? 'Yes' : 'Starting...'}
                     </p>
                 </>
             )}
 
-            {/* Scanned Data Confirmation */}
+            {/* Scanned Confirmation */}
             {scannedData && (
                 <div className="space-y-4">
                     <div className="flex items-center gap-3 p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
@@ -228,7 +243,7 @@ export function QRCodeScanner({ onScan, onClose, maxAmount }: QRCodeScannerProps
                         </div>
                     </div>
 
-                    {/* Amount Input (if not pre-filled) */}
+                    {/* Amount Input */}
                     {!scannedData.amount && (
                         <div>
                             <label className="block text-sm font-medium text-slate-400 mb-2">
@@ -270,12 +285,14 @@ export function QRCodeScanner({ onScan, onClose, maxAmount }: QRCodeScannerProps
                         <button
                             onClick={handleConfirmPayment}
                             className="flex-1 primary-button"
+                            type="button"
                         >
                             Pay Now
                         </button>
                         <button
                             onClick={handleClose}
                             className="secondary-button px-4"
+                            type="button"
                         >
                             Cancel
                         </button>
@@ -295,7 +312,7 @@ export function QRCodeScanner({ onScan, onClose, maxAmount }: QRCodeScannerProps
 }
 
 /**
- * QR Payment Modal - Complete payment flow
+ * QR Payment Modal
  */
 interface QRPaymentModalProps {
     userId: string;
@@ -353,7 +370,7 @@ export function QRPaymentModal({ userId, maxAmount, onPayment, onClose }: QRPaym
                             <X className="w-8 h-8 text-red-400" />
                         </div>
                         <p className="text-white font-medium text-lg">Payment Failed</p>
-                        <button onClick={onClose} className="mt-4 secondary-button">
+                        <button onClick={onClose} className="mt-4 secondary-button" type="button">
                             Close
                         </button>
                     </>
